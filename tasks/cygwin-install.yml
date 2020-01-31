@@ -1,0 +1,47 @@
+---
+- name: Check for registry key
+  win_reg_stat:
+    path: HKLM:\SOFTWARE\Cygwin\Installations
+  register: reg_info
+  tags: install
+
+- name: Check for install dir
+  win_stat:
+    path: "{{ install_dir }}"
+  register: dir_info
+  tags: install
+
+- debug:
+    var: reg_info | json_query('properties.*.value')
+
+- debug:
+    var: dir_info.stat.size | human_readable
+
+- name: Install block
+  block:
+    - name: Download setup file from {{ installer_url }}
+      win_get_url:
+        url: "{{ installer_url }}"
+        dest: "{{ tmp_dir }}"
+        force: no
+        checksum_url: "{{ installer_checksum }}"
+        checksum_algorithm: sha512
+
+    - name: Install cygwin to {{ install_dir }}
+      win_command: >
+        setup-x86_64.exe -W -q -n -R {{ install_dir }} -s {{ packages_site }}
+        -P {{ cygwin_packages | join(',') }}
+      args:
+        chdir: "{{ tmp_dir }}"
+      # arguments: 
+        log_path: C:\cyg_inst\mylog.txt
+        creates: '{{ install_dir }}\bin\bash.exe'
+      register: install_cmd
+
+    - name: Set installation date
+      set_fact:
+        cygwin:
+          install_date: install_cmd.end
+          install_command: install_cmd.cmd
+  when: not (dir_info.stat.exists and reg_info.exists)
+  tags: install

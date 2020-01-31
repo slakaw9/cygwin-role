@@ -1,0 +1,8 @@
+---
+
+- name: Restart sshd service
+  win_service:
+    name: "{{ sshd_service }}"
+    username: "{{ sshd_user }}"
+    password: "{{ sshd_user_passwd }}"
+    state: restarted

@@ -1,0 +1,7 @@
+---
+
+- name: Install cygwin
+  include_tasks: cygwin-install.yml
+
+- name: Configure cygwin
+  include_tasks: cygwin-config.yml

@@ -1,0 +1,100 @@
+---
+- name: Add cygwin to PATH
+  win_path:
+    elements: '{{ install_dir }}\bin'
+    state: present
+  tags: config
+
+- name: Check for ssh component
+  win_command: cygcheck -c openssh
+  args:
+    chdir: '{{ install_dir }}\bin'
+  register: cygcheck_cmd
+  tags: config
+
+- debug:
+    var: cygcheck_cmd.stdout is search('openssh')
+
+- name: Check for sshd service
+  win_service:
+    name: "{{ sshd_service | default('sshd', true)}}"
+  register: sshd_info
+  tags: config
+
+- debug:
+    var: sshd_info.exists
+
+- name: Create sshd service user
+  win_user:
+    name: "{{ sshd_user }}"
+    groups: Administrators
+    description: Cygwin sshd Service User
+    password: "{{ sshd_user_passwd }}"
+    password_never_expires: yes
+    state: present
+  register: sshd_user_info
+  tags: config
+
+- debug:
+    var: sshd_user_info
+
+- name: Configure sshd service
+  block:
+  - name: Get {{ sshd_user }} information
+    win_command: >
+      {{ install_dir }}\bin\bash.exe -c '/bin/mkpasswd -l -u {{ sshd_user }}'
+    register: mkpasswd_cmd
+
+  - name: Add {{ sshd_user }} to /etc/passwd
+    win_lineinfile:
+      line: '{{ mkpasswd_cmd.stdout_lines[0] }}'
+      newline: unix
+      path: '{{ install_dir }}\etc\passwd'
+      create: yes
+      state: present
+
+  - name: Set Windows permissions for user
+    win_user_right:
+      name: "{{ item }}"
+      users: "{{ sshd_user }}"
+      action: add
+    loop: "{{ sshd_user_privileges }}"
+
+  - name: Configure ssh server
+    win_command: >
+      bash.exe -c 'ssh-host-config -u {{ sshd_user }} -w {{ sshd_user_passwd }}
+      -N {{ sshd_service }} -y -c ntsec' -l
+    args:
+      ansible_become_user: "{{ sshd_user }}"
+      chdir: '{{ install_dir }}\bin\'
+      creates: '{{ install_dir }}\etc\sshd_config'
+ 
+  when:
+    - cygcheck_cmd.stdout is search('openssh')
+    - not sshd_info.exists
+  tags: config
+
+- name: Take ownership of /var/empty
+  win_owner:
+    path: '{{ install_dir }}\var\empty'
+    user: '{{ sshd_user }}'
+  tags: config
+
+- name: Ensure the sshd_config file is in place
+  win_copy:
+    src: sshd_config
+    dest: '{{ install_dir }}\etc\sshd_config'
+    backup: no
+  vars: { ansible_become_user: SYSTEM }
+  notify: Restart sshd service
+  tags: config
+
+- name: Ensure sshd Service is started
+  win_service:
+    name: "{{ sshd_service }}"
+    display_name: Cygwin sshd
+    username: "{{ sshd_user }}"
+    password: "{{ sshd_user_passwd }}"
+    description: "{{ sshd_service_descr }}"
+    state: started
+  tags: config
