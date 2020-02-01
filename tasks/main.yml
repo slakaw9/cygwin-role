@@ -5,3 +5,10 @@
 
 - name: Configure cygwin
   include_tasks: cygwin-config.yml
+
+- name: Add optional users
+  include_tasks: cygwin-users.yml
+  loop: "{{ cygwin_users }}"
+  loop_control:
+    loop_var: user
+  when: cygwin_users is defined

@@ -1,0 +1,24 @@
+---
+- name: Search for windows user {{ user }}
+  win_shell: net user | select-string -pattern " {{ user }} " -Quiet
+  register: net_user_cmd
+  tags: users
+  changed_when: false
+
+- name: Get mkpasswd line for {{ user }}
+  win_shell: .\bin\bash.exe -c '/bin/mkpasswd -l -u {{ user }}'
+  args:
+    chdir: "{{ install_dir }}"
+  register: mkpasswd_cmd
+  when: net_user_cmd.stdout.strip() | length > 0
+  tags: users
+
+- name: Add /etc/passwd entry of user {{ user }}
+  win_lineinfile:
+    line: '{{ mkpasswd_cmd.stdout_lines[0] }}'
+    newline: unix
+    path: '{{ install_dir }}\etc\passwd'
+    create: yes
+    state: present
+  when: mkpasswd_cmd.stdout_lines is defined
+  tags: users

@@ -1,19 +1,19 @@
 cygwin-role
 =========
 
-Installs cygwin on a system, configures user and service to enable ssh access.
+Installs cygwin on a system, configures user and service to enable ssh access.  You can also define additional users to be added to cygwin.
 
 Requirements
 ------------
 
-Windows Server 2016 machine
+Windows Server 2016
 
 Role Variables
 --------------
 
 Variables and default values:
 
-# Installation vars
+ Installation vars
 	installer_url: https://cygwin.com/setup-x86_64.exe
 	installer_checksum: https://cygwin.com/sha512.sum
 	cygwin_packages:
@@ -28,12 +28,11 @@ Variables and default values:
 	  - openssh
 	  - openssl
 	  - libssl-devel
-
 	tmp_dir: C:\cyg_inst\
 	install_dir: C:\cygwin4
 	packages_site: http://ftp-stud.hs-esslingen.de/pub/Mirrors/sources.redhat.com/cygwin/
 
-# Configuration vars
+ Configuration vars
 	sshd_service: cyg_sshd
 	sshd_user: cyg_server
 	sshd_user_passwd: pasSw0rD1
@@ -45,6 +44,12 @@ Variables and default values:
 	  - SeDenyInteractiveLogonRight
 	  - SeTcbPrivilege
 	sshd_service_descr: "Sshd Service"
+
+ Optional users vars
+	cygwin_users:
+	  - myuser
+
+
 
 Dependencies
 ------------

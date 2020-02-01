@@ -32,3 +32,5 @@ sshd_user_privileges:
   - SeTcbPrivilege
 
 sshd_service_descr: "Sshd Service"
+cygwin_users:
+  - myuser
